@@ -1,14 +1,24 @@
+#!/usr/bin/env python
 '''
-    Script to create .xyz file.
+Script to create xsd file from VASP outputs.
 '''
+
 import argparse
-import commands
 import logging
 import re
 import sys
 
 from vaspy import atomco, matstudio
 from vaspy.iter import OutCar, OsziCar
+from vaspy import PY2
+
+if PY2:
+    import commands as subprocess
+else:
+    import subprocess
+
+_logger = logging.getLogger("vaspy.script")
+
 
 if "__main__" == __name__:
 
@@ -20,55 +30,47 @@ if "__main__" == __name__:
 
     if args.step:
         # extract certain step data to .xyz file
-        step = args.step
-        step_regex = re.compile(r'^STEP\s+=\s+' + step + r'$')
-        with open('OUT.ANI', 'r') as f:
-            natom = int(f.readline().strip())
-            # match step
-            content = ''
-            count = 0
-            line = f.readline()
-            while line:
-                if step_regex.match(line):
-                    # get data content
-                    for i in xrange(natom):
-                        content += f.readline()
-                    break
-                line = f.readline()
-            if not content:
-                print 'Step: %s is out of range.' % step
-                sys.exit(1)
-        # write to .xyz file
-        with open('ts.xyz', 'w') as f:
-            head = '%12d\nSTEP = %8s\n' % (natom, step)
-            content = head + content
-            f.write(content)
+        step = int(args.step)
 
-        # coordinate transformation
-        xyz = atomco.XyzFile('ts.xyz')
-        poscar = atomco.PosCar()
-        direct_coordinates = xyz.coordinate_transform(poscar.bases)
-        suffix = '-' + step + '.xsd'
+        # Get data of that step from XDATCAR.
+        xdatcar = atomco.XdatCar()
+        for i, data in xdatcar:
+            if i == step:
+                break
+
+        # Check step validity.
+        if i < step:
+            raise ValueError("Illegal step {} (> {})".format(step, i))
+
+        # Direct coordinates for that step.
+        direct_coordinates = data
+
+        suffix = "-{}.xsd".format(step)
     else:  # the last step data
         contcar = atomco.ContCar()
         direct_coordinates = contcar.data
         suffix = '-y.xsd'
 
-# create .xsd file
-status, output = commands.getstatusoutput('ls *.xsd | head -1')
-if not output.endswith('.xsd'):
-    print "No .xsd file in current directory."
-    sys.exit(1)
-xsd = matstudio.XsdFile(filename=output)
-xsd.data = direct_coordinates
+    # create .xsd file
+    status, output = subprocess.getstatusoutput('ls *.xsd | head -1')
+    if not output.endswith('.xsd'):
+        _logger.info("No .xsd file in current directory.")
+        sys.exit(1)
+    xsd = matstudio.XsdFile(filename=output)
+    xsd.data = direct_coordinates
 
-# Get energy and force.
-oszicar = OsziCar()
-outcar = OutCar()
-xsd.force = outcar.total_forces[-1]
-logging.info("Total Force --> {}".format(xsd.force))
-xsd.energy = oszicar.E0[-1]
-logging.info("Total Energy --> {}".format(xsd.energy))
+    # Get energy and force.
+    oszicar = OsziCar()
+    outcar = OutCar()
 
-jobname = output.split('.')[0]
-xsd.tofile(filename=jobname+suffix)
+    # Get force and energy for specific step.
+    idx = int(args.step)-1 if args.step else -1
+    xsd.force = outcar.total_forces[idx]
+    _logger.info("Total Force --> {}".format(xsd.force))
+    xsd.energy = oszicar.E0[idx]
+    _logger.info("Total Energy --> {}".format(xsd.energy))
+
+    jobname = output.split('.')[0]
+    xsd.tofile(filename=jobname+suffix)
+    _logger.info("{} created.".format(jobname+suffix))
+

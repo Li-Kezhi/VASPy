@@ -1,3 +1,6 @@
-include *.md
-recursive-include vaspy *.py
-recursive-include scripts *.py
+include README.rst
+include requirements.txt
+include LICENSE
+recursive-include scripts *
+recursive-include tests *
+

@@ -4,15 +4,16 @@
 Provide coordinate file class which do operations on these files.
 ===================================================================
 Written by PytLab <shaozhengjiang@gmail.com>, November 2014
-Updated by PytLab <shaozhengjiang@gmail.com>, May 2016
+Updated by PytLab <shaozhengjiang@gmail.com>, October 2016
 
 ==============================================================
 
 """
 import numpy as np
 
-from vaspy import VasPy, CarfileValueError
-from functions import *
+from vaspy import VasPy
+from vaspy.errors import CarfileValueError
+from vaspy.functions import *
 
 
 class AtomCo(VasPy):
@@ -20,19 +21,17 @@ class AtomCo(VasPy):
     def __init__(self, filename):
         VasPy.__init__(self, filename)
 
-    def __repr__(self):
-        if hasattr(self, 'get_content'):
-            return self.get_content()
-        else:
-            return self.filename()
-
-    def __str__(self):
-        return self.__repr__()
+#    def __repr__(self):
+#        if hasattr(self, 'get_content'):
+#            return self.get_content()
+#        else:
+#            return self.filename
 
     def __getattribute__(self, attr):
-        '''
+        """
+        Make sure we can return the newest data and tf.
         确保dict能够及时根据data, tf值的变化更新.
-        '''
+        """
         if attr == 'atomco_dict':
             return self.get_atomco_dict(self.data)
         elif attr == 'tf_dict':
@@ -45,10 +44,12 @@ class AtomCo(VasPy):
             raise CarfileValueError('Atom numbers mismatch!')
 
     def get_atomco_dict(self, data):
-        "根据已获取的data和atoms, atoms_num, 获取atomco_dict"
+        """
+        根据已获取的data和atoms, atoms_num, 获取atomco_dict
+        """
         # [1, 1, 1, 16] -> [0, 1, 2, 3, 19]
         idx_list = [sum(self.atoms_num[:i])
-                    for i in xrange(1, len(self.atoms)+1)]
+                    for i in range(1, len(self.atoms)+1)]
         idx_list = [0] + idx_list
 
         data_list = data.tolist()
@@ -62,10 +63,12 @@ class AtomCo(VasPy):
         return atomco_dict
 
     def get_tf_dict(self, tf):
-        "根据已获取的tf和atoms, atoms_num, 获取tf_dict"
+        """
+        根据已获取的tf和atoms, atoms_num, 获取tf_dict
+        """
         # [1, 1, 1, 16] -> [0, 1, 2, 3, 19]
         idx_list = [sum(self.atoms_num[:i])
-                    for i in xrange(1, len(self.atoms)+1)]
+                    for i in range(1, len(self.atoms)+1)]
         idx_list = [0] + idx_list
 
         tf_list = tf.tolist()
@@ -91,7 +94,10 @@ class AtomCo(VasPy):
 
     @content_decorator
     def get_xyz_content(self):
-        "获取最新.xyz文件内容字符串"
+        """
+        Get xyz file content.
+        获取最新.xyz文件内容字符串
+        """
         ntot = "%12d\n" % self.ntot
         step = "STEP =%9d\n" % self.step
         data = atomdict2str(self.atomco_dict, self.atoms)
@@ -101,7 +107,10 @@ class AtomCo(VasPy):
 
     @content_decorator
     def get_poscar_content(self):
-        "根据对象数据获取poscar文件内容字符串"
+        """
+        Get POSCAR content.
+        根据对象数据获取poscar文件内容字符串
+        """
         content = 'Created by VASPy\n'
         bases_const = " %.9f\n" % self.bases_const
         # bases
@@ -125,7 +134,10 @@ class AtomCo(VasPy):
         return content
 
     def get_volume(self):
-        "Get volume of slab(Angstrom^3)"
+        """
+        Get volume of slab(Angstrom^3)
+        获取晶格体积
+        """
         if hasattr(self, 'bases_const') and hasattr(self, 'bases'):
             bases = self.bases_const*self.bases
             volume = np.linalg.det(bases)
@@ -183,7 +195,7 @@ class XyzFile(AtomCo):
 
     def load(self):
         "加载文件内容"
-        with open(self.filename(), 'r') as f:
+        with open(self.filename, 'r') as f:
             content_list = f.readlines()
         ntot = int(content_list[0].strip())  # total atom number
         step = int(str2list(content_list[1])[-1])  # iter step number
@@ -215,10 +227,12 @@ class XyzFile(AtomCo):
 
         return
 
-    def coordinate_transform(self, bases=np.array([[1.0, 0.0, 0.0],
-                                                   [0.0, 1.0, 0.0],
-                                                   [0.0, 0.0, 1.0]])):
+    def coordinate_transform(self, bases=None):
         "Use Ax=b to do coordinate transform cartesian to direct"
+        if bases is None:
+            bases = np.array([[1.0, 0.0, 0.0],
+                              [0.0, 1.0, 0.0],
+                              [0.0, 0.0, 1.0]])
         return self.cart2dir(bases, self.data)
 
     def get_content(self):
@@ -269,7 +283,7 @@ class PosCar(AtomCo):
     def load(self):
         "获取文件数据信息"
         "Load all information in POSCAR."
-        with open(self.filename(), 'r') as f:
+        with open(self.filename, 'r') as f:
             content_list = f.readlines()
         #get scale factor
         bases_const = float(content_list[1])
@@ -332,7 +346,7 @@ class PosCar(AtomCo):
     def constrain_atom(self, atom, to='F', axis='all'):
         "修改某一类型原子的FT信息"
         # [1, 1, 1, 16] -> [0, 1, 2, 3, 19]
-        idx_list = [sum(self.atoms_num[:i]) for i in xrange(1, len(self.atoms)+1)]
+        idx_list = [sum(self.atoms_num[:i]) for i in range(1, len(self.atoms)+1)]
         idx_list = [0] + idx_list
 
         if to not in ['T', 'F']:
@@ -415,13 +429,13 @@ class XdatCar(AtomCo):
         self.load()
 
     def load(self):
-        with open(self.filename(), 'r') as f:
+        with open(self.filename, 'r') as f:
             # read lattice info
             self.system = f.readline().strip()
             self.bases_const = float(f.readline().strip())
             # lattice basis
             self.bases = []
-            for i in xrange(3):
+            for i in range(3):
                 basis = line2list(f.readline())
                 self.bases.append(basis)
             # atom info
@@ -432,17 +446,18 @@ class XdatCar(AtomCo):
 
     def __iter__(self):
         "generator which yield step number and iterative data."
-        with open(self.filename(), 'r') as f:
+        with open(self.filename, 'r') as f:
             # pass info lines
-            for i in xrange(self.info_nline):
+            for i in range(self.info_nline):
                 f.readline()
             prompt = f.readline().strip()
             while '=' in prompt:
                 step = int(prompt.split('=')[-1])
                 data = []
-                for i in xrange(self.ntot):
+                for i in range(self.ntot):
                     data_line = f.readline()
                     data.append(line2list(data_line))
                 prompt = f.readline().strip()
 
                 yield step, np.array(data)
+

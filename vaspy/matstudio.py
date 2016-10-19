@@ -4,16 +4,20 @@
 Provide Material Studio markup file class which do operations on these files.
 =============================================================================
 Written by PytLab <shaozhengjiang@gmail.com>, August 2015
-Updated by PytLab <shaozhengjiang@gmail.com>, May 2016
+Updated by PytLab <shaozhengjiang@gmail.com>, October 2016
 ==============================================================
 
 """
+from os import getcwd
+import logging
 import xml.etree.cElementTree as ET
 
 import numpy as np
 
-from atomco import AtomCo
-from vaspy import UnmatchedDataShape
+from vaspy import VasPy, LazyProperty
+from vaspy.atomco import AtomCo
+from vaspy.errors import UnmatchedDataShape
+from vaspy.functions import str2list
 
 
 class XsdFile(AtomCo):
@@ -43,12 +47,17 @@ class XsdFile(AtomCo):
           bases          np.array, basis vectors of space, dtype=np.float64
           ============  =======================================================
         """
-        super(self.__class__, self).__init__(filename)
+        super(XsdFile, self).__init__(filename)
+
+        # Set logger.
+        self.__logger = logging.getLogger("vaspy.XsdFile")
+
+        # Load data in xsd.
         self.load()
 
     def load(self):
         # get element tree
-        tree = ET.ElementTree(file=self.filename())
+        tree = ET.ElementTree(file=self.filename)
         self.tree = tree
 
         # MS version info
@@ -68,8 +77,8 @@ class XsdFile(AtomCo):
         # lattice parameters
         self.bases = self.get_bases()
 
-        # thermodynamic info.
-        self.get_thermo_info()
+        # info in Name property.
+        self.get_name_info()
 
         return
 
@@ -168,7 +177,7 @@ class XsdFile(AtomCo):
 
         return
 
-    def get_thermo_info(self):
+    def get_name_info(self):
         """
         获取文件中能量，力等数据.
         """
@@ -178,10 +187,22 @@ class XsdFile(AtomCo):
             break
 
         # Get thermo data.
-        fieldnames = ["energy", "force", "magnetism"]
-        for key, value in zip(fieldnames, info.split()):
-            data = float(value.split(':')[-1].strip())
-            setattr(self, key, data)
+        fieldnames = ["energy", "force", "magnetism", "path"]
+        try:
+            for key, value in zip(fieldnames, info.split()):
+                if key != "path":
+                    data = float(value.split(':')[-1].strip())
+                else:
+                    data = value.split(":")[-1].strip()
+                setattr(self, key, data)
+        except:
+            # Set default values.
+            self.force, self.energy, self.magnetism = 0.0, 0.0, 0.0
+
+            msg = "No data info in Name property '{}'".format(info)
+            self.__logger.warning(msg)
+        finally:
+            self.path = getcwd()
 
         return
 
@@ -206,7 +227,7 @@ class XsdFile(AtomCo):
         self.update_bases()
 
         # Thermodynamic info.
-        self.update_thermo()
+        self.update_name()
 
         return
 
@@ -239,15 +260,19 @@ class XsdFile(AtomCo):
 
         return
 
-    def update_thermo(self):
+    def update_name(self):
         """
-        更新ElementTree中能量力等信息。
+        更新ElementTree中能量，力，作业路径等信息。
         """
         value = ""
         for key, attr in zip(['E', 'F', 'M'], ["energy", "force", "magnetism"]):
             data = getattr(self, attr)
             value += "{}:{} ".format(key, data)
         value = value.strip()
+
+        # Get current path.
+        path = getcwd()
+        value = "{} {}:{}".format(value, "P", path)
 
         for elem in self.tree.iter("SymmetrySystem"):
             elem.set("Name", value)
@@ -287,7 +312,7 @@ class XsdFile(AtomCo):
         # get atom type and number of this type
         # [48, 48, 30, 14] -> [48, 96, 126, 140]
         atoms_num_sum = [sum(self.atoms_num[: i+1])
-                         for i in xrange(len(self.atoms))]
+                         for i in range(len(self.atoms))]
         for idx, n in enumerate(atoms_num_sum):
             if atom_number <= n:
                 atom_idx = idx
@@ -317,3 +342,143 @@ class XsdFile(AtomCo):
         self.tree.write(filename)
 
         return
+
+
+class ArcFile(VasPy):
+    def __init__(self, filename):
+        """
+        Create a Material Studio *.arc file class.
+
+        Example:
+
+        >>> a = ArcFile("00-05.arc")
+
+        Class attributes descriptions
+        ================================================================
+         Attribute         Description
+         ===============  ==============================================
+         filename          string, name of arc file.
+         coords_iterator   generator, yield Cartisan coordinates in
+                           numpy array.
+         lengths           list of float, lengths of lattice axes.
+         angles            list of float, angles of lattice axes.
+        ================  ==============================================
+        """
+        super(ArcFile, self).__init__(filename)
+
+        # Set logger.
+        self.__logger = logging.getLogger("vaspy.ArcFile")
+
+    @property
+    def coords_iterator(self):
+        """
+        Return generator for Cartisan coordinates in arc file iteration.
+        返回每个轨迹的所有原子的笛卡尔坐标
+        """
+        with open(self.filename, "r") as f:
+            collecting = False
+            coords = []
+            for line in f:
+                line = line.strip()
+                if not collecting and line.startswith("PBC "):  # NOTE: Use "PBC " to tell "PBC=" apart
+                    collecting = True
+                elif collecting and line.startswith("end"):
+                    collecting = False
+                    yield np.array(coords)
+                    coords = []
+                # Collect coordinates data.
+                elif collecting:
+                    line_list = str2list(line)
+                    coord = [float(c) for c in line_list[1: 4]]
+                    coords.append(coord)
+
+    @LazyProperty
+    def lengths(self):
+        """
+        Lengths of axes of supercell.
+        晶格基向量长度。
+        """
+        with open(self.filename, "r") as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("PBC "):
+                    line_list = str2list(line)
+                    return [float(l) for l in line_list[1: 4]]
+        return None
+
+    @LazyProperty
+    def angles(self):
+        """
+        Angels of axes of supercell in Degrees.
+        晶格基向量夹角(角度)。
+        """
+        with open(self.filename, "r") as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("PBC "):
+                    line_list = str2list(line)
+                    return [float(l) for l in line_list[4: 7]]
+        return None
+
+    @LazyProperty
+    def elements(self):
+        """
+        Element name of all atom in lattice.
+        晶格中的所有元素种类名称。
+        """
+        with open(self.filename, "r") as f:
+            collecting = False
+            elements = []
+            for line in f:
+                line = line.strip()
+                if not collecting and line.startswith("PBC "):
+                    collecting = True
+                elif collecting and line.startswith("end"):
+                    collecting = False
+                    return elements
+                # Collect coordinates data.
+                elif collecting:
+                    line_list = str2list(line)
+                    element = line_list[0]
+                    elements.append(element)
+
+
+class XtdFile(XsdFile):
+    def __init__(self, filename, arcname=None):
+        """
+        Create Material Studio *.xtd file class.
+
+        Example:
+
+        >>> a = XtdFile(filename='00-04.xtd', arcname="00-04.arc")
+
+        Class attributes descriptions
+        =======================================================================
+          Attribute        Description
+          ==============  =====================================================
+          filename         string, name of *.xtd file.
+          arcname          string, name of *.arc file.
+          coords_iterator  generator, yield direct coordinates.
+          =====================================================================
+
+        """
+        super(XtdFile, self).__init__(filename)
+
+        if arcname is not None:
+            self.arcfile = ArcFile(arcname)
+        else:
+            self.arcfile = None
+
+    @property
+    def coords_iterator(self):
+        """
+        Return generator which yields direct coordinates.
+        返回生成器生成相对坐标矩阵。
+        """
+        if self.arcfile is None:
+            raise ValueError("No ArcFile object in XtdFile.")
+
+        for cart_coords in self.arcfile.coords_iterator:
+           dir_coords = self.cart2dir(self.bases, cart_coords)
+           yield np.array(dir_coords)
+

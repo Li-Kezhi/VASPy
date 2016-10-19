@@ -7,9 +7,12 @@ import commands
 import logging
 
 
+from vaspy import PY2
 from vaspy.incar import InCar
 
 SHELL_COMMAND = "find ./ -name 'INCAR'"
+
+_logger = logging.getLogger("vaspy.script")
 
 if "__main__" == __name__:
 
@@ -23,7 +26,7 @@ if "__main__" == __name__:
     incars = [InCar(incar_path) for incar_path in incar_paths]
 
     # Get all possible arguments.
-    set_list = [set(incar.pnames()) for incar in incars]
+    set_list = [set(incar.pnames) for incar in incars]
     possible_args = set.intersection(*set_list)
 
     # Set arguments for this script.
@@ -34,14 +37,19 @@ if "__main__" == __name__:
     args_space = parser.parse_args()
 
     # Change parameters for all incars.
-    for pname, value in args_space.__dict__.iteritems():
+    if PY2:
+        pname_value_pairs = args_space.__dict__.iteritems()
+    else:
+        pname_value_pairs = args_space.__dict__.items()
+
+    for pname, value in pname_value_pairs :
         if value is None:
             continue
 
         for incar in incars:
-            logging.info("{} --> {} in {}.".format(pname, value, incar.filename()))
+            _logger.info("{} --> {} in {}.".format(pname, value, incar.filename))
             incar.set(pname, value)
             incar.tofile()
 
-    logging.info("{} INCAR files ... ok.".format(len(incars)))
+    _logger.info("{} INCAR files ... ok.".format(len(incars)))
 

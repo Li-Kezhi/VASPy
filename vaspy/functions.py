@@ -1,12 +1,13 @@
 # -*- coding:utf-8 -*-
-#functions used in atomco
+
+import string
+
 import numpy as np
 
 
 def str2list(rawstr):
-    import string
     rawlist = rawstr.strip(string.whitespace).split(' ')
-    #remove space elements in list
+    # Remove space elements in list.
     cleanlist = [x for x in rawlist if x != ' ' and x != '']
     return cleanlist
 
@@ -72,7 +73,7 @@ def atomdict2str(atomco_dict, keys):
     content_str = ''
     for atom in keys:
         n = len(atomco_dict[atom])
-        for i in xrange(n):
+        for i in range(n):
             line_tuple = tuple([atom] + atomco_dict[atom][i])
             content_str += '%-3s%16s%16s%16s\n' % line_tuple
 
@@ -98,3 +99,4 @@ def get_angle(v1, v2):
     angle = np.arccos(cos_angle)*180/np.pi
 
     return angle
+
