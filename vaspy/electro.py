@@ -88,7 +88,15 @@ class DosX(DataPlotter):
         >>> a.plotsum(0, (5, 10, 2))
         '''
         x = self.data[:, xcol]
-        if len(ycols) == 2:
+        if type(ycols) == int:
+            start = ycols
+            stop = start + 1
+            step = 1
+        elif len(ycols) == 1:
+            start = ycols[0]
+            stop = start + 1
+            step = 1
+        elif len(ycols) == 2:
             start, stop = ycols
             step = 1
         else:
