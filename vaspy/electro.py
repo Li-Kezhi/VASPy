@@ -31,7 +31,7 @@ from vaspy.functions import line2list
 
 
 class DosX(DataPlotter):
-    def __init__(self, filename, field=' ', dtype=float):
+    def __init__(self, filename, field=' ', dtype=float, energyCorrection=0):
         """
         Create a DOS file class.
 
@@ -52,6 +52,8 @@ class DosX(DataPlotter):
           ============  =======================================
         """
         DataPlotter.__init__(self, filename=filename, field=' ', dtype=float)
+        for point in self.data:
+            point[0] -= energyCorrection
 
         # Set logger.
         self.__logger = logging.getLogger("vaspy.DosX")
