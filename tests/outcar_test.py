@@ -27,8 +27,7 @@ class OutCarTest(unittest.TestCase):
         " Test OutCar construction and query functions. "
         filename = path + "/OUTCAR"
         poscar = path + "/POSCAR"
-        outcar = OutCar(filename=filename,
-                        poscar=poscar)
+        outcar = OutCar(filename=filename, poscar=poscar)
 
         # Check query functions.
         self.assertEqual(outcar.filename, filename)

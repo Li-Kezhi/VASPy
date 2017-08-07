@@ -6,15 +6,19 @@ VASPy
     :target: https://travis-ci.org/PytLab/VASPy
     :alt: Build Status
 
-.. image:: https://img.shields.io/badge/python-3.5-green.svg
+.. image:: https://landscape.io/github/PytLab/VASPy/master/landscape.svg?style=flat
+    :target: https://landscape.io/github/PytLab/VASPy/master
+    :alt: Code Health
+
+.. image:: https://coveralls.io/repos/github/PytLab/VASPy/badge.svg?branch=master
+    :target: https://coveralls.io/github/PytLab/VASPy?branch=master
+
+
+.. image:: https://img.shields.io/badge/python-3.5, 2.7-green.svg
     :target: https://www.python.org/downloads/release/python-351/
     :alt: platform
 
-.. image:: https://img.shields.io/badge/python-2.7-green.svg
-    :target: https://www.python.org/downloads/release/python-2710
-    :alt: platform
-
-.. image:: https://img.shields.io/badge/pypi-v0.7.11-blue.svg
+.. image:: https://img.shields.io/badge/pypi-v0.8.3-blue.svg
     :target: https://pypi.python.org/pypi/vaspy/
     :alt: versions
 
@@ -40,6 +44,21 @@ Installation
 3. From source::
 
     python setup.py install
+
+If you want to use **mayavi** to visualize VASP data, it is recommened to install `Canopy environment <https://store.enthought.com/downloads/#default>`_ on your device instead of installing it manually.
+
+After installing canopy, you can set corresponding aliases, for example:
+
+.. code-block:: shell
+
+    alias canopy='/Users/<yourname>/Library/Enthought/Canopy/edm/envs/User/bin/python'
+    alias canopy-pip='/Users/zjshao/Library/Enthought/Canopy/edm/envs/User/bin/pip'
+    alias canopy-ipython='/Users/<yourname>/Library/Enthought/Canopy/edm/envs/User/bin/ipython'
+    alias canopy-jupyter='/Users/<yourname>/Library/Enthought/Canopy/edm/envs/User/bin/jupyter'
+
+Then you can install VASPy to canopy::
+
+    canopy-pip install vaspy
 
 Examples
 --------
@@ -109,15 +128,24 @@ Manipulate XDATCAR:
     >>> from vaspy.atomco import XdatCar
     >>> xdatcar = XdatCar()
     >>> # Get Cartisan coordinates and step number in XDATCAR.
-    >>> for step, data in xdatcar:
-    >>>     print(step)
-    >>>     print(xdatcar.dir2cart(xdatcar.bases, data))
+    >>> for item in xdatcar:
+    >>>     print(item.step)
+    >>>     print(xdatcar.dir2cart(xdatcar.bases, item.coordinates))
 
     >>> python xdatcar_to_arc.py
 
 **animation**
 
 .. image:: https://github.com/PytLab/VASPy/blob/master/pic/sn2_my.gif
+
+
+Process animation file:
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Now VASPy can manipulate animation files to get more realistice results like atom trajectories or 2D/3D probability distribution.
+
+.. image:: https://github.com/PytLab/VASPy/blob/master/pic/pd.png
+
 
 **You can write your OWN script to process VASP files**
 

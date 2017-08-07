@@ -4,7 +4,7 @@
 Provide iteration-related file class which do operations on these files.
 ========================================================================
 Written by PytLab <shaozhengjiang@gmail.com>, August 2015
-Updated by PytLab <shaozhengjiang@gmail.com>, August 2016
+Updated by PytLab <shaozhengjiang@gmail.com>, March 2017
 ========================================================================
 
 """
@@ -16,8 +16,10 @@ import matplotlib.pyplot as plt
 
 from vaspy import VasPy, PY2
 from vaspy import LazyProperty
-from vaspy.atomco import PosCar
+from vaspy.atomco import PosCar, XyzFile
 from vaspy.functions import line2list
+# Copy a XdatCar from atomco.
+from vaspy.atomco import XdatCar
 
 
 class OsziCar(VasPy):
@@ -456,4 +458,35 @@ class OutCar(VasPy):
             raise ValueError("Number of frequency can not be divided by 3.")
 
         return freq_types
+
+
+class AniFile(VasPy):
+    """ Class for file containing multiple xyz content.
+        e.g. *.ANI file for molden animation visualization.
+
+    Example:
+
+    >>> x = MultiXyz(filename="OUT.ANI")
+    """
+    def __init__(self, filename="OUT.ANI"):
+        VasPy.__init__(self, filename)
+
+        # Get the total atom number for data reading.
+        with open(self.filename, "r") as f:
+            natom = f.readline()
+
+        self.natom = int(natom)
+
+    def __iter__(self):
+        """ Make MultiXyz object iterable.
+        """
+        with open(self.filename, "r") as f:
+            content_list = []
+            for i, line in enumerate(f):
+                if (i + 1) % (self.natom + 2) == 0:
+                    content_list.append(line)
+                    yield XyzFile(content_list=content_list)
+                    content_list = []
+                else:
+                    content_list.append(line)
 

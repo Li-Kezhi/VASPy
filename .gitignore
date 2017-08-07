@@ -72,7 +72,10 @@ vaspy/DOS/*
 
 # Pictures
 *.png
-
+!/pic/*.png
 # ctags
 tags
+
+.DS_Store
+Thumbs.db
 

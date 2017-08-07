@@ -8,6 +8,11 @@ from oszicar_test import OsziCarTest
 from outcar_test import OutCarTest
 from xsd_test import XsdTest
 from xtd_test import XtdTest
+from poscar_test import PosCarTest
+from xyzfile_test import XyzFileTest
+from cif_test import CifFileTest
+from ani_test import AniFileTest
+from xdatcar_test import XdatCarTest
 
 def suite():
     suite = unittest.TestSuite([
@@ -17,6 +22,11 @@ def suite():
         unittest.TestLoader().loadTestsFromTestCase(OutCarTest),
         unittest.TestLoader().loadTestsFromTestCase(XsdTest),
         unittest.TestLoader().loadTestsFromTestCase(XtdTest),
+        unittest.TestLoader().loadTestsFromTestCase(PosCarTest),
+        unittest.TestLoader().loadTestsFromTestCase(XyzFileTest),
+        unittest.TestLoader().loadTestsFromTestCase(CifFileTest),
+        unittest.TestLoader().loadTestsFromTestCase(AniFileTest),
+        unittest.TestLoader().loadTestsFromTestCase(XdatCarTest),
     ])
 
     return suite
