@@ -311,6 +311,19 @@ class XyzFile(AtomCo):
 
         return
 
+    def reduce_coordinate(self, **kwargs):
+        "Reduce the coordinates that cross the crystal boundary"
+        poscar = kwargs.pop('poscar', None)
+        bases = kwargs.pop('bases', None)
+        if poscar is not None:
+            bases = poscar.bases * poscar.bases_const
+        elif bases is not None:
+            pass
+        else:
+            raise AssertionError('No POSCAR or bases passed in')
+        for i, coordinate in enumerate(self.data):
+            reduced_coordinate = np.linalg.solve(bases, coordinate) % 1.0
+            self.data[i] = np.dot(bases, reduced_coordinate)
 
 class PosCar(AtomCo):
     def __init__(self, filename='POSCAR'):
