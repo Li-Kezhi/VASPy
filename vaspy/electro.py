@@ -192,7 +192,7 @@ class DosX(DataPlotter):
         data = self.data.tolist()
         content = ''
         for datalist in data:
-            content += ('%12.8f'*ndata + '\n') % tuple(datalist)
+            content += ('%13.8f'*ndata + '\n') % tuple(datalist)
 
         if filename is None:
             filename = self.filename
